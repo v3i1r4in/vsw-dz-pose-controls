@@ -1,0 +1,341 @@
+
+(function () {
+	// Initialize 'static' variables that hold modifier key state
+	var s_bShiftPressed = false;
+	var s_bControlPressed = false;
+	var s_bAltPressed = false;
+	var s_bMetaPressed = false;
+ 
+	// If the "Action" global transient is defined, and its the correct type
+	if( typeof( Action ) != "undefined" && Action.inherits( "DzScriptAction" ) ){
+		// If the current key sequence for the action is not pressed
+		if( !App.isKeySequenceDown( Action.shortcut ) ){
+			updateModifierKeyState();
+		}
+	// If the "Action" global transient is not defined
+	} else if( typeof( Action ) == "undefined" ) {
+		updateModifierKeyState();
+	}
+ 
+	/*********************************************************************/
+	// void : A function for updating the keyboard modifier state
+	function updateModifierKeyState()
+	{
+		// Get the current modifier key state
+		var nModifierState = App.modifierKeyState();
+		// Update variables that hold modifier key state
+		s_bShiftPressed = (nModifierState & 0x02000000) != 0;
+		s_bControlPressed = (nModifierState & 0x04000000) != 0;
+		s_bAltPressed = (nModifierState & 0x08000000) != 0;
+		s_bMetaPressed = (nModifierState & 0x10000000) != 0;
+	};
+ 
+	/*********************************************************************/
+	// void : A function for printing only if debugging
+	function debug()
+	{
+		// If we are not debugging
+		if( !s_bAltPressed ){
+			// We are done...
+			return;
+		}
+ 
+		// Convert the arguments object into an array
+		var aArguments = [].slice.call( arguments );
+ 
+		// Print the array
+		print( aArguments.join(" ") );
+	};
+ 
+	/*********************************************************************/
+	// String : A function for retrieving a translation if one exists
+	function text( sText )
+	{
+		// If the version of the application supports qsTr()
+		if( typeof( qsTr ) != "undefined" ){
+			// Return the translated (if any) text
+			return qsTr( sText );
+		}
+ 
+		// Return the original text
+		return sText;
+	};
+ 
+	/***********************************************************************
+	***** DsFileSystem Prototype *****
+	***********************************************************************/
+ 
+	/*********************************************************************/
+	function DsFileSystem()
+	{
+	};
+ 
+	/***********************************************************************/
+	DsFileSystem.superclass = Object;
+ 
+	/*********************************************************************/
+	// Array<String|DzDir> : Method for collecting an array of directory objects
+	DsFileSystem.prototype.getDirectories = function( oDir, regxFilter, nFilter, nSort, sType, bRecurse )
+	{
+		// Provide feedback
+		debug( String("DsFileSystem::getDirectories( %1, \"%2\", %3, %4, \"%5\", %6 )")
+			.arg( oDir.path() )
+			.arg( regxFilter )
+			.arg( nFilter )
+			.arg( nSort )
+			.arg( sType )
+			.arg( bRecurse ) );
+ 
+		// Declare working variable
+		var sAbsPath;
+ 
+		// Get the directory names
+		var aDirs = oDir.entryList( regxFilter, nFilter, nSort );
+		// Iterate over the directory names
+		for( var i = 0, nDirs = aDirs.length; i < nDirs; i += 1 ){
+			// Get the absolute path of the 'current' directory
+			sAbsPath = String( "%1/%2" ).arg( oDir.absPath() ).arg( aDirs[ i ] );
+			// Based on the type requested
+			switch( sType ){
+				default:
+				case "String":
+					// Update the name with the absolute path of the directory
+					aDirs[ i ] = sAbsPath;
+					// If we are recursing
+					if( bRecurse ){
+						// Recursively collect the directory paths
+						aDirs = aDirs.concat( this.getSubDirectories( new DzDir( sAbsPath ),
+							regxFilter, nFilter, nSort, sType ) );
+					}
+					break;
+				case "DzDir":					
+					// Update the name with a directory object
+					aDirs[ i ] = new DzDir( sAbsPath );
+					// If we are recursing
+					if( bRecurse ){
+						// Recursively collect the directories
+						aDirs = aDirs.concat( this.getSubDirectories( aDirs[ i ],
+							regxFilter, nFilter, nSort, sType ) );
+					}
+					break;
+			}
+		}
+ 
+		// Return the result
+		return aDirs;
+	};
+ 
+	/*********************************************************************/
+	// Array<String|DzDir> : Method for recursively collecting an array of directory objects
+	DsFileSystem.prototype.getSubDirectories = function( oDir, regxFilter, nFilter, nSort, sType )
+	{
+		// Provide feedback
+		debug( String( "DsFileSystem::getSubDirectories( %1, \"%2\", %3, %4, \"%5\" )" )
+			.arg( oDir.path() )
+			.arg( regxFilter )
+			.arg( nFilter )
+			.arg( nSort )
+			.arg( sType ) );
+ 
+		// Initialize
+		var aSubDirs = [];
+ 
+		// Get the immediate child directories
+		var aDirs = this.getDirectories( oDir, regxFilter, nFilter, nSort, sType, true );
+		// Iterate over the directories
+		for( var i = 0, nDirs = aDirs.length; i < nDirs; i += 1 ){
+			// Based on the type requested
+			switch( sType ){
+				default:
+				case "String":
+					// Recursively collect the directory paths
+					aSubDirs = aDirs.concat( this.getSubDirectories( new DzDir( aDirs[ i ] ),
+						regxFilter, nFilter, nSort, sType ) );
+					break;
+				case "DzDir":	
+					// Recursively collect the directories
+					aSubDirs = aDirs.concat( this.getSubDirectories( aDirs[ i ],
+						regxFilter, nFilter, nSort, sType, true ) );
+					break;
+			}
+		}
+ 
+		// Return the result
+		return aSubDirs;
+	};
+ 
+	/*********************************************************************/
+	// Array<String|DzFileInfo|DzFile> : Method for collecting an array of files
+	DsFileSystem.prototype.getFiles = function( oDir, regxFilter, nFilter, nSort, sType )
+	{
+		// Provide feedback
+		debug( String( "DsFileSystem::getFiles( %1, \"%2\", %3, %4, \"%5\" )" )
+			.arg( oDir.path() )
+			.arg( regxFilter )
+			.arg( nFilter )
+			.arg( nSort )
+			.arg( sType ) );
+ 
+		// Declare working variable
+		var sAbsFilePath;
+ 
+		// Get the file names
+		var aFiles = oDir.entryList( regxFilter, nFilter, nSort );
+		// Iterate over the file names
+		for( var i = 0, nFiles = aFiles.length; i < nFiles; i += 1 ){
+			// Get the absolute path of the 'current' file
+			sAbsFilePath = oDir.absFilePath( aFiles[ i ] );
+			// Based on the type requested
+			switch( sType ){
+				default:
+				case "String":
+					// Update the name with the absolute path of a file
+					aFiles[ i ] = sAbsFilePath;
+					break;
+				case "DzFileInfo":
+					// Update the name with a file info object
+					aFiles[ i ] = new DzFileInfo( sAbsFilePath );
+					break;
+				case "DzFile":
+					// Update the name with a file object
+					aFiles[ i ] = new DzFile( sAbsFilePath );
+					break;
+			}
+		}
+ 
+		// Return the result
+		return aFiles;
+	};
+ 
+	/*********************************************************************/
+	// Array<String|DzDir> : Method for retrieving a list of directories
+	DsFileSystem.prototype.getDirectoryList = function( sPath, sFilter, sType, bRecurse, bRelative )
+	{
+		// Declare the output
+		var aDirs = [];
+ 
+		// Create a directory object
+		var oBaseDir = new DzDir( sPath );
+		// If the directory doesn't exist
+		if( !oBaseDir.exists() ){
+			// Clean up; do not leak memory
+			oBaseDir.deleteLater();
+ 
+			// We are done...
+			return aDirs;
+		}
+ 
+		// Get the directories
+		var aDirs = this.getDirectories( oBaseDir, sFilter,
+			DzDir.Dirs | DzDir.NoDotAndDotDot, DzDir.Name, sType, bRecurse );
+ 
+		// Clean up; do not leak memory
+		oBaseDir.deleteLater();
+ 
+		// If we do not want relative paths
+		if( !bRelative ){
+			// Return the result
+			return aDirs;
+		}
+ 
+		// Declare working variables
+		var sAbsPath, sRelPath;
+		var oDir;
+ 
+		// Iterate over the directories
+		for( var i = 0, nDirs = aDirs.length; i < nDirs; i += 1 ){
+			// Based on the type requested
+			switch( sType ){
+				default:
+				case "String":
+					// Get the 'current' path
+					sAbsPath = aDirs[ i ];
+					// Get the relative portion of the path
+					sRelPath = sAbsPath.substring( sPath.length );
+					// Update the path
+					aDirs[ i ] = sRelPath;
+					break;
+				case "DzDir":
+					// Get the 'current' directory
+					oDir = aDirs[ i ];
+					// Get the path
+					sAbsPath = oDir.path();
+					// Get the relative portion of the path
+					sRelPath = sAbsPath.substring( sPath.length );
+					// Update the path
+					oDir.setPath( sRelPath );
+					// Update the directory
+					aDirs[ i ] = oDir;
+					break;
+			}
+		}
+ 
+		// Return the result
+		return aDirs;
+	};
+ 
+	/*********************************************************************/
+	// Array<String|DzFileInfo|DzFile> : Method for retrieving a list of files
+	DsFileSystem.prototype.getFileList = function( sPath, sFilter, sType, bRecurse )
+	{
+		// Create a directory object
+		var oBaseDir = new DzDir( sPath );
+		// If the directory doesn't exist
+		if( !oBaseDir.exists() ){
+			// Clean up; do not leak memory
+			oBaseDir.deleteLater();
+ 
+			// We are done...
+			return [];
+		}
+ 
+		// Get the files from the specified directory
+		var aFiles = this.getFiles( oBaseDir, sFilter, DzDir.Files, DzDir.Name, sType );
+ 
+		// Clean up; do not leak memory
+		oBaseDir.deleteLater();
+ 
+		// If we are recursing
+		if( bRecurse ){	
+			// Declare working variable
+			var oDir;
+ 
+			// Get the directories
+			var aDirs = this.getDirectoryList( sPath, "*", "DzDir", bRecurse );
+			// Iterate over the directories
+			for( var i = 0, nDirs = aDirs.length; i < nDirs; i += 1 ){
+				// Get the 'current' directory
+				oDir = aDirs[ i ];
+ 
+				// Append the files from the 'current' directory to the output
+				aFiles = aFiles.concat(
+					this.getFiles( oDir, sFilter, DzDir.Files, DzDir.Name, sType ) );
+ 
+				// Clean up; do not leak memory
+				oDir.deleteLater();
+			}
+		}
+ 
+		// Return the result
+		return aFiles;
+	};
+ 
+	/*********************************************************************/
+	// Create a file system object
+	var oFileSystem = new DsFileSystem();
+
+
+
+	/*********************************************************************/
+    // Recreate pose index
+    var baseDir = FileDialog.doDirectoryDialog(qsTr("Select a Directory"), "", "D:/Collections/library-daz_3d/Veilrain Pose Collection/Poses/Propless");
+	var aFiles = oFileSystem.getFileList(baseDir, "*.duf", "String", true );
+    var fileName = getScriptFileName();
+	var currentDir = new DzFileInfo(fileName).path();
+    var file = new DzFile([currentDir, 'index.json'].join('/'));
+    file.open( DzFile.WriteOnly );
+    file.write(JSON.stringify(aFiles));
+    file.close();
+})();
+
+ 

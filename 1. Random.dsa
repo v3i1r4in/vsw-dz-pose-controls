@@ -1,0 +1,74 @@
+// DAZ Studio version 4.20.0.17 filetype DAZ Script
+
+(function() {
+    var fileName = getScriptFileName();
+    var currentDir = new DzFileInfo(fileName).path();
+    var index = new DzFile([currentDir, 'index.json'].join('/'));
+    index.open(DzFile.ReadOnly); 
+    var contentStr = index.readAll().convertToString();
+    var aFiles = JSON.parse(contentStr);
+    index.close();
+
+    function chooseFile() {
+        var choosenFileIndex = Math.min(Math.floor(Math.random() * aFiles.length), aFiles.length - 1);
+        return aFiles[choosenFileIndex];
+    }
+    
+    function findG8F() {
+    	// use primary selection if it's G8F
+		var figure = Scene.getPrimarySelection();
+	    if (figure && figure.name == 'Genesis8Female') {
+	    	return figure;
+	    }
+	    
+	    // find the first G8F in skeleton list
+		var nodes = Scene.getSkeletonList();
+		for (var i = 0; i < nodes.length; i++) {
+			var n = nodes[i];
+			if (n.name == "Genesis8Female") {
+		    	Scene.setPrimarySelection(n);
+		    	return n;
+			}
+		}
+		
+		// can't find one
+        MessageBox.warning(qsTr("Cannot find G8F."), qsTr("Error"), qsTr("Ok"), qsTr("Ok"));
+		return null;
+	}
+
+    var choosenFile = chooseFile();
+    while (choosenFile.find('?') >= 0) {
+        // avoid read file paths with question mark in them because unicode are not saved correctly in the index file.
+        choosenFile = chooseFile();
+    }
+    
+    var figure = findG8F();
+
+    if (!figure) {
+    	return;
+    }
+    
+
+    // reset rotations before loading ( likely not needed )
+    figure.findProperty('XRotate').setValue(0);
+    figure.findProperty('YRotate').setValue(0);
+    figure.findProperty('ZRotate').setValue(0);
+
+    App.getContentMgr().openFile(choosenFile, true);
+
+    // reset transforms other than rotations
+    figure.findProperty('XTranslate').setValue(0);
+    figure.findProperty('YTranslate').setValue(0);
+    figure.findProperty('ZTranslate').setValue(0);
+    figure.findProperty('XScale').setValue(0);
+    figure.findProperty('YScale').setValue(0);
+    figure.findProperty('ZScale').setValue(0);
+
+    // Fix G3 Poses
+    var g3PoseFix = figure.getPropertyGroups().findPropertyByLabel("!G3F Full Body");
+    g3PoseFix.setValue(0);
+    if (choosenFile.find("G3") !== -1) {
+        sleep(500);
+        g3PoseFix.setValue(1)
+    }
+})();

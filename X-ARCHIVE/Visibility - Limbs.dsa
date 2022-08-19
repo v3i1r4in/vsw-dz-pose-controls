@@ -1,0 +1,48 @@
+// DAZ Studio version 4.20.0.17 filetype DAZ Script
+
+(function () {
+    function findG8F() {
+    	// use primary selection if it's G8F
+		var figure = Scene.getPrimarySelection();
+	    if (figure && figure.name == 'Genesis8Female') {
+	    	return figure;
+	    }
+	    
+	    // find the first G8F in skeleton list
+		var nodes = Scene.getSkeletonList();
+		for (var i = 0; i < nodes.length; i++) {
+			var n = nodes[i];
+			if (n.name == "Genesis8Female") {
+		    	Scene.setPrimarySelection(n);
+		    	return n;
+			}
+		}
+		
+		// can't find one
+        MessageBox.warning(qsTr("Cannot find G8F."), qsTr("Error"), qsTr("Ok"), qsTr("Ok"));
+		return null;
+	}
+	
+	var figure = findG8F();
+	if (!figure) {
+		return;
+	}
+	
+	function toggleNodeAndChildren(skeleton, childLabel) {	
+		var root = figure.findNodeChildByLabel(childLabel, true);
+		var children = root.getNodeChildren(true);
+		children.push(root);
+		for (var i = 0; i < children.length; i++) {
+			if (children[i].getLabel().startsWith('Clavicle')) {
+				continue;			
+			}			
+			
+			children[i].setVisible(!children[i].isVisible());
+		}
+	}
+	
+	toggleNodeAndChildren(figure, 'Right Collar');
+	toggleNodeAndChildren(figure, 'Left Collar');
+	toggleNodeAndChildren(figure, 'Right Thigh Bend');
+	toggleNodeAndChildren(figure, 'Left Thigh Bend');
+})();

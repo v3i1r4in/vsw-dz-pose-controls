@@ -1,0 +1,220 @@
+(function () {
+    var RIGHT_ARM_ROOT = 'Right Collar';
+    var Left_ARM_ROOT = 'Left Collar';
+    var RIGHT_LEG_ROOT = 'Right Thigh Bend';
+    var Left_LEG_ROOT = 'Left Thigh Bend';
+    var HEAD_ROOT = 'Neck Lower';
+    var LEFT_HAND_ROOT = 'Left Hand';
+    var RIGHT_HAND_ROOT = 'Right Hand';
+    var TORSO_ROOT = 'Hip';
+    var CHEST_ROOT = 'Abdomen Lower';
+    
+    function findG8F() {
+    	// use primary selection if it's G8F
+		var figure = Scene.getPrimarySelection();
+	    if (figure && figure.name == 'Genesis8Female') {
+	    	return figure;
+	    }
+	    
+	    // find the first G8F in skeleton list
+		var nodes = Scene.getSkeletonList();
+		for (var i = 0; i < nodes.length; i++) {
+			var n = nodes[i];
+			if (n.name == "Genesis8Female") {
+		    	Scene.setPrimarySelection(n);
+		    	return n;
+			}
+		}
+		
+		// can't find one
+        MessageBox.warning(qsTr("Cannot find G8F."), qsTr("Error"), qsTr("Ok"), qsTr("Ok"));
+		return null;
+	}
+	
+	var figure = findG8F();
+	if (!figure) {
+		return;
+	}
+
+    function toggleNode(n) {
+        if (n)
+            n.setVisible(!n.isVisible());
+    }
+	
+	function toggleNodeAndChildren(skeleton, childLabel) {
+        var root = skeleton;
+        if (childLabel) {
+            root = skeleton.findNodeChildByLabel(childLabel, true);
+        }
+
+		var children = root.getNodeChildren(true);
+		children.push(root);
+		for (var i = 0; i < children.length; i++) {
+            toggleNode(children[i]);
+		}
+	}
+
+    function setLockStatus(n, lock) {
+        if (n.getXRotControl()) { n.getXRotControl().lock(lock); } 
+        if (n.getYRotControl()) { n.getYRotControl().lock(lock); }
+        if (n.getZRotControl()) { n.getZRotControl().lock(lock); } 
+
+        if (n.getXPosControl()) { n.getXPosControl().lock(lock); } 
+        if (n.getYPosControl()) { n.getYPosControl().lock(lock); }
+        if (n.getZPosControl()) { n.getZPosControl().lock(lock); } 
+    }
+
+    function getLockStatus(n) {
+        var locked = false;
+        if (n.getXRotControl()) { locked = locked || n.getXRotControl().isLocked(); } 
+        // if (n.getYRotControl()) { locked = locked || n.getYRotControl().isLocked(); }
+        if (n.getZRotControl()) { locked = locked || n.getZRotControl().isLocked(); }
+        return locked;
+    }
+
+    function setNodeAndChildrenLockStatus(skeleton, childLabel, lock) {
+        var root = skeleton;
+        if (childLabel) {
+            root = skeleton.findNodeChildByLabel(childLabel, true);
+        }
+		var children = root.getNodeChildren(true);
+		children.push(root);
+		for (var i = 0; i < children.length; i++) {
+            setLockStatus(children[i], lock);
+		}
+	}
+
+    var loader = new DzUiLoader();
+    var thisScriptName = getScriptFileName();
+	var currentDir = new DzFileInfo(thisScriptName).path();
+    var uiFilePath = [currentDir, 'body_control_ui.ui'].join('/');
+    var dialog = new DzDialog()
+	var uiWidget = loader.load(uiFilePath, dialog);
+
+
+    function resetSelections() {
+        uiWidget.findChildOfWidget('rhand').checked = getLockStatus(figure.findNodeChildByLabel(RIGHT_HAND_ROOT, true));
+        uiWidget.findChildOfWidget('rarm').checked = getLockStatus(figure.findNodeChildByLabel(RIGHT_ARM_ROOT, true));
+        uiWidget.findChildOfWidget('larm').checked = getLockStatus(figure.findNodeChildByLabel(Left_ARM_ROOT, true));
+        uiWidget.findChildOfWidget('lhand').checked = getLockStatus(figure.findNodeChildByLabel(LEFT_HAND_ROOT, true));
+        uiWidget.findChildOfWidget('head').checked = getLockStatus(figure.findNodeChildByLabel(HEAD_ROOT, true));
+        uiWidget.findChildOfWidget('torso').checked = getLockStatus(figure.findNodeChildByLabel(TORSO_ROOT, true));
+        uiWidget.findChildOfWidget('chest').checked = getLockStatus(figure.findNodeChildByLabel(CHEST_ROOT, true));
+        uiWidget.findChildOfWidget('lleg').checked = getLockStatus(figure.findNodeChildByLabel(Left_LEG_ROOT, true));
+        uiWidget.findChildOfWidget('rleg').checked = getLockStatus(figure.findNodeChildByLabel(RIGHT_LEG_ROOT, true));
+        uiWidget.findChildOfWidget('root').checked = getLockStatus(figure);
+    }
+
+    function clearSelections() {
+        uiWidget.findChildOfWidget('rhand').checked = false;
+        uiWidget.findChildOfWidget('rarm').checked = false;
+        uiWidget.findChildOfWidget('larm').checked = false;
+        uiWidget.findChildOfWidget('lhand').checked = false;
+        uiWidget.findChildOfWidget('head').checked = false;
+        uiWidget.findChildOfWidget('torso').checked = false;
+        uiWidget.findChildOfWidget('chest').checked = false;
+        uiWidget.findChildOfWidget('lleg').checked = false;
+        uiWidget.findChildOfWidget('rleg').checked = false;
+        uiWidget.findChildOfWidget('root').checked = false;
+    }
+
+    function reverseSelections() {
+        uiWidget.findChildOfWidget('rhand').checked = !uiWidget.findChildOfWidget('rhand').checked;
+        uiWidget.findChildOfWidget('rarm').checked = !uiWidget.findChildOfWidget('rarm').checked;
+        uiWidget.findChildOfWidget('larm').checked = !uiWidget.findChildOfWidget('larm').checked;
+        uiWidget.findChildOfWidget('lhand').checked = !uiWidget.findChildOfWidget('lhand').checked;
+        uiWidget.findChildOfWidget('head').checked = !uiWidget.findChildOfWidget('head').checked;
+        uiWidget.findChildOfWidget('torso').checked = !uiWidget.findChildOfWidget('torso').checked;
+        uiWidget.findChildOfWidget('chest').checked = !uiWidget.findChildOfWidget('chest').checked;
+        uiWidget.findChildOfWidget('lleg').checked = !uiWidget.findChildOfWidget('lleg').checked;
+        uiWidget.findChildOfWidget('rleg').checked = !uiWidget.findChildOfWidget('rleg').checked;
+        uiWidget.findChildOfWidget('root').checked = !uiWidget.findChildOfWidget('root').checked;
+    }
+
+    resetSelections();
+
+    
+    connect(uiWidget.findChildOfWidget('resetlocks'), 'clicked()', resetSelections);
+    connect(uiWidget.findChildOfWidget('clearlocks'), 'clicked()', clearSelections);
+    connect(uiWidget.findChildOfWidget('reverselocks'), 'clicked()', reverseSelections);
+
+    connect(uiWidget.findChildOfWidget('applylocks'), 'clicked()', function() {
+        startProgress("Applying", 18, false, true );
+
+        setLockStatus(figure, uiWidget.findChildOfWidget('root').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Hip', true), uiWidget.findChildOfWidget('torso').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Pelvis', true), uiWidget.findChildOfWidget('torso').checked);
+        stepProgress( 1 );
+        
+        setLockStatus(figure.findNodeChildByLabel('Abdomen Lower', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Abdomen Upper', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Chest Lower', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Chest Upper', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Left Pectoral', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Right Pectoral', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Left Collar', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+        setLockStatus(figure.findNodeChildByLabel('Right Collar', true), uiWidget.findChildOfWidget('chest').checked);
+        stepProgress( 1 );
+
+        // because setting head is expensive, only do it if something has changed
+        if (getLockStatus(figure.findNodeChildByLabel(HEAD_ROOT, true)) != uiWidget.findChildOfWidget('head').checked) {
+            setNodeAndChildrenLockStatus(figure, HEAD_ROOT, uiWidget.findChildOfWidget('head').checked);
+        }
+        stepProgress( 1 );
+        
+        setNodeAndChildrenLockStatus(figure, RIGHT_ARM_ROOT, uiWidget.findChildOfWidget('rarm').checked);
+        stepProgress( 1 );
+        setNodeAndChildrenLockStatus(figure, RIGHT_HAND_ROOT, uiWidget.findChildOfWidget('rhand').checked);
+        stepProgress( 1 );
+
+        setNodeAndChildrenLockStatus(figure, Left_ARM_ROOT, uiWidget.findChildOfWidget('larm').checked);
+        stepProgress( 1 );
+        setNodeAndChildrenLockStatus(figure, LEFT_HAND_ROOT, uiWidget.findChildOfWidget('lhand').checked);
+        stepProgress( 1 );
+
+        setNodeAndChildrenLockStatus(figure, Left_LEG_ROOT, uiWidget.findChildOfWidget('lleg').checked);
+        stepProgress( 1 );
+        setNodeAndChildrenLockStatus(figure, RIGHT_LEG_ROOT, uiWidget.findChildOfWidget('rleg').checked);
+        finishProgress();
+    });
+
+    connect(uiWidget.findChildOfWidget('togglearms'), 'clicked()', function() {
+        toggleNodeAndChildren(figure, RIGHT_ARM_ROOT);
+        toggleNodeAndChildren(figure, Left_ARM_ROOT);
+    });
+
+    connect(uiWidget.findChildOfWidget('togglelegs'), 'clicked()', function() {
+        toggleNodeAndChildren(figure, RIGHT_LEG_ROOT);
+        toggleNodeAndChildren(figure, Left_LEG_ROOT);
+    });
+
+    connect(uiWidget.findChildOfWidget('togglehead'), 'clicked()', function() {
+        toggleNodeAndChildren(figure, HEAD_ROOT);
+    });
+
+    connect(uiWidget.findChildOfWidget('toggletorso'), 'clicked()', function() {
+        // hide everything
+        toggleNodeAndChildren(figure);
+
+        // flip other things back
+        toggleNode(figure);
+        toggleNodeAndChildren(figure, RIGHT_ARM_ROOT);
+        toggleNodeAndChildren(figure, Left_ARM_ROOT);
+        toggleNodeAndChildren(figure, RIGHT_LEG_ROOT);
+        toggleNodeAndChildren(figure, Left_LEG_ROOT);
+        toggleNodeAndChildren(figure, HEAD_ROOT);
+    });
+
+    // print(Object.keys(uiWidget.findChildOfWidget('togglearms')));
+    dialog.exec();
+
+})();
